@@ -33,6 +33,10 @@ double* generateBias(int layer_count){
     return biases;
 }
 
+double sigmoid(double n){
+    return 1 / (1 + (1 / powf(e, n)));
+}
+
 double* feedForward(
     int pre_node_count, 
     int post_node_count,
@@ -52,7 +56,8 @@ double* feedForward(
             new_value = new_value + (input[j] * weights[current_weight]);
             current_weight++;
         }
-        result[i] = new_value + bias;
+        result[i] = sigmoid(new_value + bias);
+        printf("%f\n", result[i]);
     }
 
     return result;    
