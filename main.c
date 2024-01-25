@@ -48,27 +48,14 @@ double* generateTargets(int IO_count, Target *target){
     double* targets = malloc(IO_count * (sizeof(double)));
     targets[0] = target->min;
 
-    double interval = 0;
+    double interval = (target->max - target->min) / (IO_count - 1);
 
-    if(IO_count % 2 == 0){
-        interval = (double)1 / (IO_count-1);
-    }
-    else{
-        interval = (double)1 / (IO_count);
-    }
-
-    if(IO_count > 2){
-        for(int i = 1; i < IO_count; i++){
-            targets[i] = interval;
-            interval += interval;
-        }
+    for(int i = 1; i <= IO_count - 2; i++){
+        targets[i] = interval;
+        interval += interval;
     }
 
     targets[IO_count-1] = target->max;
-
-    for(int i = 0; i < IO_count; i++){
-        printf("%f\n", targets[i]);
-    }
 
     return targets;
 }
@@ -77,10 +64,25 @@ double sigmoid(double n){
     return 1 / (1 + (1 / powf(e, n)));
 }
 
-double* calculateHidden(int pre_node_count, int post_node_count, double weights[], double bias, double inputs[]){
+int* layerArray(Node *node, int total_layer_count){
+    
+    int* layers = malloc(total_layer_count * (sizeof(int)));
+
+    layers[0] = node->IO_count;
+    layers[total_layer_count - 1] = node->IO_count;
+
+    for(int i = 1; i <= node->layer_count; i++){
+        layers[i] = node->hidden_count;
+    }
+
+    return layers;
+}
+
+double* calculatePass(int pre_node_count, int post_node_count, double weights[], double bias, double inputs[], int start_weight){
+    
     double* result = malloc(post_node_count * sizeof(double));
 
-    int current_weight = 0;
+    int current_weight = start_weight;
 
     for(int i = 0; i < post_node_count; i++){
         double new_value = 0;
@@ -93,10 +95,37 @@ double* calculateHidden(int pre_node_count, int post_node_count, double weights[
         printf("%f\n", result[i]);
     }
 
+    printf("\r\n");
+
     return result;    
 }
 
 double* feedForward(Node *node, double weights[], double biases[], double inputs[]){
+
+    int total_layer_count = 2 + node->layer_count;
+    int* layers = layerArray(node, total_layer_count);
+    int start_weight = 0;
+
+    for(int i = 0; i < total_layer_count - 1; i++){
+        double* result = calculatePass(layers[i], layers[i + 1], weights, biases[i], inputs, start_weight);
+
+        start_weight += layers[i] * layers[i + 1];
+
+        inputs = result;
+    }
+
+    return inputs;
+}
+
+double calculateTotalError(int IO_count, double values[], double targets[]){
+
+    double error = 0;
+
+    for(int i = 0; i < IO_count; i++){
+        error += (double)(0.5 * (targets[i] - values[i])) * (double)(0.5 * (targets[i] - values[i]));
+    }
+
+    return error;
 }
 
 int main(){
@@ -104,9 +133,9 @@ int main(){
 
     Node node;
 
-    node.IO_count = 4;
-    node.hidden_count = 3;
-    node.layer_count = 1;
+    node.IO_count = 3;
+    node.hidden_count = 5;
+    node.layer_count = 2;
 
     double* inputs = malloc(node.IO_count * (sizeof(double)));
 
@@ -128,7 +157,8 @@ int main(){
     
     double* targets = generateTargets(node.IO_count, &target);
 
-    double* new_value = feedForward(&node, weights, biases, inputs);
+    double* final_values = feedForward(&node, weights, biases, inputs);
+
 }
 
 //https://www.javatpoint.com/pytorch-backpropagation-process-in-deep-neural-network
