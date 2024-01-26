@@ -4,9 +4,11 @@
 #include "math.h"
 
 static const double e = 2.7182818;
+static const int debug_mode = 1;
 
 typedef struct{
-    int IO_count;
+    int input_count;
+    int output_count;
     int hidden_count;
     int layer_count;
 } Node;
@@ -16,8 +18,8 @@ typedef struct{
     double max;
 } Target;
 
-double* generateWeights(int IO_count, int hidden_count, int layer_count){
-    int total_weight_count = 2 * (IO_count * hidden_count) + ((hidden_count * hidden_count) * (layer_count-1));
+double* generateWeights(Node *node, int hidden_count, int layer_count){
+    int total_weight_count = (node->input_count + node->output_count) * hidden_count + (hidden_count * hidden_count) * (layer_count-1);
 
     double* weights = malloc(total_weight_count * (sizeof(double)));
 
@@ -28,34 +30,30 @@ double* generateWeights(int IO_count, int hidden_count, int layer_count){
     return weights;
 }
 
-double random(){
-    return ((double) rand()) / RAND_MAX;
-}
-
 double* generateBias(int layer_count){
     int total_bias_count = layer_count + 1;
 
     double* biases = malloc(total_bias_count * (sizeof(double)));
 
     for(int i = 0; i < total_bias_count; i++){
-        biases[i] = random();
+        biases[i] = (double)i / total_bias_count;
     }
 
     return biases;
 }
 
-double* generateTargets(int IO_count, Target *target){ 
-    double* targets = malloc(IO_count * (sizeof(double)));
+double* generateTargets(int output_count, Target *target){ 
+    double* targets = malloc(output_count * (sizeof(double)));
     targets[0] = target->min;
 
-    double interval = (target->max - target->min) / (IO_count - 1);
+    double interval = (target->max - target->min) / (output_count - 1);
 
-    for(int i = 1; i <= IO_count - 2; i++){
+    for(int i = 1; i <= output_count - 2; i++){
         targets[i] = interval;
         interval += interval;
     }
 
-    targets[IO_count-1] = target->max;
+    targets[output_count-1] = target->max;
 
     return targets;
 }
@@ -68,8 +66,8 @@ int* layerArray(Node *node, int total_layer_count){
     
     int* layers = malloc(total_layer_count * (sizeof(int)));
 
-    layers[0] = node->IO_count;
-    layers[total_layer_count - 1] = node->IO_count;
+    layers[0] = node->input_count;
+    layers[total_layer_count - 1] = node->output_count;
 
     for(int i = 1; i <= node->layer_count; i++){
         layers[i] = node->hidden_count;
@@ -89,13 +87,19 @@ double* calculatePass(int pre_node_count, int post_node_count, double weights[],
 
         for(int j = 0; j < pre_node_count; j++){
             new_value = new_value + (inputs[j] * weights[current_weight]);
+
             current_weight++;
         }
         result[i] = sigmoid(new_value + bias);
-        printf("%f\n", result[i]);
+
+        if(debug_mode == 1){
+            printf("%0.10f\n", result[i]);
+        }
     }
 
-    printf("\r\n");
+    if(debug_mode == 1){
+        printf("\r\n");
+    }
 
     return result;    
 }
@@ -107,7 +111,14 @@ double* feedForward(Node *node, double weights[], double biases[], double inputs
     int start_weight = 0;
 
     for(int i = 0; i < total_layer_count - 1; i++){
-        double* result = calculatePass(layers[i], layers[i + 1], weights, biases[i], inputs, start_weight);
+        double* result = calculatePass(
+            layers[i], 
+            layers[i + 1], 
+            weights, 
+            biases[i], 
+            inputs, 
+            start_weight
+        );
 
         start_weight += layers[i] * layers[i + 1];
 
@@ -117,15 +128,23 @@ double* feedForward(Node *node, double weights[], double biases[], double inputs
     return inputs;
 }
 
-double calculateTotalError(int IO_count, double values[], double targets[]){
+double calculateTotalError(int output_count, double values[], double targets[]){
 
     double error = 0;
 
-    for(int i = 0; i < IO_count; i++){
-        error += (double)(0.5 * (targets[i] - values[i])) * (double)(0.5 * (targets[i] - values[i]));
+    for(int i = 0; i < output_count; i++){
+        error += (double)0.5 * pow(targets[i] - values[i], 2);
+    }
+
+    if(debug_mode == 1){
+        printf("\nTotal error: %0.10f\r\n", error);
     }
 
     return error;
+}
+
+double* backPropagate(){
+    
 }
 
 int main(){
@@ -133,17 +152,19 @@ int main(){
 
     Node node;
 
-    node.IO_count = 3;
-    node.hidden_count = 5;
-    node.layer_count = 2;
+    node.input_count = 2;
+    node.output_count = 2;
+    node.hidden_count = 2;
+    node.layer_count = 1;
 
-    double* inputs = malloc(node.IO_count * (sizeof(double)));
+    double* inputs = malloc(node.input_count * (sizeof(double)));
 
     inputs[0] = 0.05;
     inputs[1] = 0.10;
+    inputs[2] = 0.15;
 
     double* weights = generateWeights(
-        node.IO_count,
+        &node,
         node.hidden_count,
         node.layer_count
     );
@@ -155,9 +176,12 @@ int main(){
     target.min = 0.01;
     target.max = 0.99;
     
-    double* targets = generateTargets(node.IO_count, &target);
+    double* targets = generateTargets(node.output_count, &target);
 
     double* final_values = feedForward(&node, weights, biases, inputs);
+    double error = calculateTotalError(node.output_count, final_values, targets);
+
+    
 
 }
 
