@@ -143,8 +143,18 @@ double calculateTotalError(int output_count, double values[], double targets[]){
     return error;
 }
 
-double* backPropagate(){
-    
+double* backPropagate(Node *node, double new_values[], double error, double targets[]){
+
+    for(int i = 0; i < node->output_count; i++){
+        
+        double x = (double)-(targets[i] - new_values[i]);
+
+        double y = new_values[i] * (1 - new_values[i]);
+
+        double z = 
+
+    }
+
 }
 
 int main(){
@@ -180,9 +190,6 @@ int main(){
 
     double* final_values = feedForward(&node, weights, biases, inputs);
     double error = calculateTotalError(node.output_count, final_values, targets);
-
-    
-
 }
 
 //https://www.javatpoint.com/pytorch-backpropagation-process-in-deep-neural-network
